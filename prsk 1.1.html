@@ -1,0 +1,872 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PJSK 紀錄本 Pro</title>
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --card-bg: #252542;
+            --text-color: #fff;
+            --easy: #448AFF;
+            --normal: #64DD17;
+            --hard: #FFD600;
+            --expert: #D50000;
+            --master: #AA00FF;
+            --append: #FF4081; /* 改為粉色 */
+            --fc-color: #00E676; /* 改為綠色 */
+            --ap-color: linear-gradient(45deg, #FFD700, #FFF, #FFD700);
+            --tab-active: #00d2ff;
+        }
+
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            padding-bottom: 100px;
+        }
+
+
+        /* --- 導航與 Tabs --- */
+        .header-container {
+            background: rgba(30, 30, 50, 0.98);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+
+        .app-title {
+            text-align: center;
+            padding: 10px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            border-bottom: 1px solid #333;
+        }
+
+
+        .tabs {
+            display: flex;
+            justify-content: space-around;
+            padding: 0;
+        }
+
+
+        .tab-btn {
+            flex: 1;
+            background: none;
+            border: none;
+            color: #888;
+            padding: 12px 0;
+            font-size: 1rem;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: 0.3s;
+        }
+
+
+        .tab-btn.active {
+            color: var(--text-color);
+            border-bottom-color: var(--tab-active);
+            font-weight: bold;
+        }
+
+
+        /* --- 主要內容區 --- */
+        .content-area {
+            padding: 15px;
+            max-width: 600px;
+            margin: 0 auto;
+            display: none; /* 預設隱藏，JS 控制顯示 */
+        }
+
+
+        .content-area.active-view {
+            display: block;
+        }
+
+
+        /* --- 通用元件 --- */
+        .song-card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            border: 1px solid #3a3a5e;
+            position: relative;
+        }
+
+
+        .song-header {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: rgba(0,0,0,0.2);
+        }
+
+
+        .song-img {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            object-fit: cover;
+            background-color: #333;
+            margin-right: 15px;
+            border: 2px solid #fff;
+        }
+
+
+        .song-info { flex: 1; min-width: 0; }
+        .song-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+
+        .card-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+
+        .icon-btn {
+            background: none;
+            border: none;
+            color: #aaa;
+            font-size: 1.2rem;
+            padding: 5px;
+            cursor: pointer;
+        }
+
+
+        /* --- 難度與按鈕 --- */
+        .diff-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+            padding: 4px 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+
+        .diff-label {
+            width: 90px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: #fff;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: space-between;
+        }
+
+
+        .bg-easy { background-color: var(--easy); }
+        .bg-normal { background-color: var(--normal); }
+        .bg-hard { background-color: var(--hard); color: #333 !important; text-shadow: none; }
+        .bg-expert { background-color: var(--expert); }
+        .bg-master { background-color: var(--master); }
+        .bg-append { background-color: var(--append); color: #fff; } /* Pink */
+
+
+        .status-btns { display: flex; gap: 8px; }
+
+
+        .btn-toggle {
+            background: #333;
+            border: 1px solid #555;
+            color: #888;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            cursor: pointer;
+            min-width: 45px;
+        }
+
+
+        .btn-toggle.fc-active {
+            background-color: var(--fc-color);
+            color: #003300; /* 深綠字 */
+            box-shadow: 0 0 8px var(--fc-color);
+            border-color: var(--fc-color);
+        }
+
+
+        .btn-toggle.ap-active {
+            background: var(--ap-color);
+            color: #6e4900;
+            box-shadow: 0 0 10px #FFD700;
+            border-color: #FFD700;
+        }
+
+
+        /* --- 難度分類視圖 --- */
+        .filter-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+        
+        .filter-chip {
+            padding: 8px 15px;
+            background: #333;
+            border-radius: 20px;
+            color: #ccc;
+            white-space: nowrap;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border: 1px solid #444;
+        }
+        .filter-chip.active {
+            background: #00d2ff;
+            color: #000;
+            font-weight: bold;
+            border-color: #00d2ff;
+        }
+
+
+        .level-group { margin-bottom: 25px; }
+        .level-header {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #00d2ff;
+            border-bottom: 2px solid #00d2ff;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+        }
+
+
+        .mini-row {
+            display: flex;
+            align-items: center;
+            background: #2a2a4a;
+            padding: 8px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+        .mini-img { width: 40px; height: 40px; border-radius: 4px; margin-right: 10px; }
+        
+        /* --- 播放清單視圖 --- */
+        .playlist-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .playlist-card {
+            background: linear-gradient(135deg, #2a2a4a, #333);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            border-left: 5px solid #00d2ff;
+            cursor: pointer;
+        }
+        .playlist-name { font-size: 1.2rem; font-weight: bold; }
+        .playlist-count { color: #888; font-size: 0.9rem; margin-top: 5px; }
+
+
+        /* --- FAB & Modals --- */
+        .fab {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background-color: #00d2ff;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            color: white;
+            box-shadow: 0 4px 15px rgba(0,210,255,0.4);
+            cursor: pointer;
+            border: none;
+            z-index: 200;
+        }
+
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 300;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+
+        .modal-content {
+            background: #252542;
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+            border-radius: 15px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+
+        /* 表單元件 */
+        input[type="text"], input[type="number"], select {
+            width: 100%;
+            padding: 10px;
+            background: #1a1a2e;
+            border: 1px solid #444;
+            color: white;
+            border-radius: 6px;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+        .btn-full { width: 100%; padding: 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn-primary { background-color: #00d2ff; color: white; }
+        .btn-secondary { background: transparent; border: 1px solid #555; color: #aaa; }
+        
+        .level-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #ccc; font-size: 0.9rem; }
+
+
+        /* 播放清單選擇 */
+        .playlist-option {
+            padding: 10px;
+            border-bottom: 1px solid #444;
+            display: flex;
+            align-items: center;
+        }
+        .playlist-option input { width: auto; margin-right: 10px; margin-bottom: 0; }
+
+
+    </style>
+</head>
+<body>
+
+
+    <div class="header-container">
+        <div class="app-title">PJSK 紀錄本</div>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('songs')">所有歌曲</button>
+            <button class="tab-btn" onclick="switchTab('levels')">難度分類</button>
+            <button class="tab-btn" onclick="switchTab('playlists')">播放清單</button>
+        </div>
+    </div>
+
+
+    <div id="view-songs" class="content-area active-view">
+        <div id="songListContainer"></div>
+    </div>
+
+
+    <div id="view-levels" class="content-area">
+        <div class="filter-bar" id="diffFilterBar">
+            </div>
+        <div id="levelGroupContainer">
+            <p style="text-align: center; color: #666;">請選擇上方難度</p>
+        </div>
+    </div>
+
+
+    <div id="view-playlists" class="content-area">
+        <div class="playlist-header">
+            <span>我的清單</span>
+            <button class="btn-toggle" onclick="openCreatePlaylistModal()" style="color:#fff; border-color:#fff;">+ 新增清單</button>
+        </div>
+        <div id="playlistContainer"></div>
+        
+        <div id="playlistDetail" style="display:none; margin-top:20px;">
+            <h3 id="currentPlaylistTitle" style="color:#00d2ff;"></h3>
+            <button class="btn-secondary" onclick="backToPlaylists()" style="margin-bottom:15px; padding:5px 10px;">← 返回列表</button>
+            <div id="playlistSongsContainer"></div>
+        </div>
+    </div>
+
+
+    <button class="fab" onclick="openAddSongModal()">+</button>
+
+
+    <div class="modal" id="addSongModal">
+        <div class="modal-content">
+            <h2 style="margin-top:0;">新增歌曲</h2>
+            <div class="form-group">
+                <label>歌曲名稱</label>
+                <input type="text" id="inputTitle">
+            </div>
+            <div class="form-group">
+                <label>封面圖片</label>
+                <input type="file" id="inputImg" accept="image/*" style="color:#fff;">
+            </div>
+            <div class="level-grid">
+                <div><label style="color:var(--easy)">Easy</label><input type="number" id="lvEasy"></div>
+                <div><label style="color:var(--normal)">Normal</label><input type="number" id="lvNormal"></div>
+                <div><label style="color:var(--hard)">Hard</label><input type="number" id="lvHard"></div>
+                <div><label style="color:var(--expert)">Expert</label><input type="number" id="lvExpert"></div>
+                <div><label style="color:var(--master)">Master</label><input type="number" id="lvMaster"></div>
+                <div><label style="color:var(--append)">Append</label><input type="number" id="lvAppend" placeholder="-"></div>
+            </div>
+            <button class="btn-full btn-primary" onclick="addSong()">確認新增</button>
+            <button class="btn-full btn-secondary" onclick="closeAllModals()">取消</button>
+        </div>
+    </div>
+
+
+    <div class="modal" id="addToPlaylistModal">
+        <div class="modal-content">
+            <h3>加入播放清單</h3>
+            <div id="playlistSelectionList"></div>
+            <button class="btn-full btn-primary" onclick="confirmAddToPlaylist()">確定</button>
+            <button class="btn-full btn-secondary" onclick="closeAllModals()">取消</button>
+        </div>
+    </div>
+
+
+    <div class="modal" id="createPlaylistModal">
+        <div class="modal-content">
+            <h3>建立新清單</h3>
+            <input type="text" id="newPlaylistName" placeholder="清單名稱 (例如: 體力曲)">
+            <button class="btn-full btn-primary" onclick="createPlaylist()">建立</button>
+            <button class="btn-full btn-secondary" onclick="closeAllModals()">取消</button>
+        </div>
+    </div>
+
+
+<script>
+    // --- 資料初始化 ---
+    let songs = JSON.parse(localStorage.getItem('pjsk_songs_v2')) || [];
+    let playlists = JSON.parse(localStorage.getItem('pjsk_playlists_v2')) || [];
+    
+    // 定義難度常數
+    const difficulties = ['easy', 'normal', 'hard', 'expert', 'master', 'append'];
+    const diffLabels = ['EASY', 'NORMAL', 'HARD', 'EXPERT', 'MASTER', 'APPEND'];
+    const diffClasses = ['bg-easy', 'bg-normal', 'bg-hard', 'bg-expert', 'bg-master', 'bg-append'];
+
+
+    let currentSelectedSongId = null; // 用於加入清單時暫存 ID
+
+
+    window.onload = () => {
+        renderAllSongs();
+        initDiffFilter();
+        renderPlaylists();
+    };
+
+
+    // --- Tab 切換邏輯 ---
+    function switchTab(tabName) {
+        document.querySelectorAll('.content-area').forEach(el => el.classList.remove('active-view'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        
+        document.getElementById('view-' + tabName).classList.add('active-view');
+        // 簡單的按鈕激活樣式切換
+        const btns = document.querySelectorAll('.tab-btn');
+        if(tabName === 'songs') btns[0].classList.add('active');
+        if(tabName === 'levels') btns[1].classList.add('active');
+        if(tabName === 'playlists') btns[2].classList.add('active');
+
+
+        // 如果切換到 Tab，隱藏 FAB (除了 Songs Tab)
+        const fab = document.querySelector('.fab');
+        if(tabName === 'songs') fab.style.display = 'flex';
+        else fab.style.display = 'none';
+    }
+
+
+    // --- 核心功能：儲存 ---
+    function saveData() {
+        localStorage.setItem('pjsk_songs_v2', JSON.stringify(songs));
+        localStorage.setItem('pjsk_playlists_v2', JSON.stringify(playlists));
+    }
+
+
+    // --- 渲染：所有歌曲卡片 ---
+    function renderAllSongs() {
+        const container = document.getElementById('songListContainer');
+        container.innerHTML = '';
+        if (songs.length === 0) {
+            container.innerHTML = '<div style="text-align:center;margin-top:50px;color:#666;">暫無歌曲，請按 + 新增</div>';
+            return;
+        }
+        songs.forEach((song) => {
+            container.appendChild(createSongCard(song));
+        });
+    }
+
+
+    // 建立單一歌曲卡片的 DOM
+    function createSongCard(song) {
+        const card = document.createElement('div');
+        card.className = 'song-card';
+        
+        let rowsHtml = '';
+        difficulties.forEach((diff, idx) => {
+            const lv = song.levels[diff];
+            if (diff === 'append' && !lv) return; // 無 Append 則不顯示
+
+
+            const s = song.status[diff];
+            const fcActive = s.fc ? 'fc-active' : '';
+            const apActive = s.ap ? 'ap-active' : '';
+
+
+            rowsHtml += `
+                <div class="diff-row">
+                    <div class="diff-label ${diffClasses[idx]}">
+                        <span>${diffLabels[idx]}</span>
+                        <span>${lv || '-'}</span>
+                    </div>
+                    <div class="status-btns">
+                        <button class="btn-toggle ${fcActive}" onclick="toggleStatus(${song.id}, '${diff}', 'fc')">FC</button>
+                        <button class="btn-toggle ${apActive}" onclick="toggleStatus(${song.id}, '${diff}', 'ap')">AP</button>
+                    </div>
+                </div>
+            `;
+        });
+
+
+        const imgSrc = song.image || 'https://via.placeholder.com/60/333/fff?text=PJSK';
+
+
+        card.innerHTML = `
+            <div class="song-header">
+                <img src="${imgSrc}" class="song-img">
+                <div class="song-info">
+                    <div class="song-title">${song.title}</div>
+                </div>
+                <div class="card-actions">
+                    <button class="icon-btn" onclick="openAddToPlaylistModal(${song.id})">📂</button>
+                    <button class="icon-btn" onclick="deleteSong(${song.id})">×</button>
+                </div>
+            </div>
+            <div style="padding-bottom:10px;">${rowsHtml}</div>
+        `;
+        return card;
+    }
+
+
+    // --- 狀態切換 (FC/AP) ---
+    function toggleStatus(songId, diff, type) {
+        const song = songs.find(s => s.id === songId);
+        if (!song) return;
+
+
+        const status = song.status[diff];
+        if (type === 'fc') {
+            if (status.fc) { status.fc = false; status.ap = false; }
+            else { status.fc = true; }
+        } else if (type === 'ap') {
+            if (status.ap) { status.ap = false; }
+            else { status.ap = true; status.fc = true; }
+        }
+        saveData();
+        // 重新渲染當前視圖
+        if(document.getElementById('view-songs').classList.contains('active-view')) renderAllSongs();
+        if(document.getElementById('view-levels').classList.contains('active-view')) renderLevelGroup(currentDiffFilter);
+        // 如果在播放清單內，也要重整 (略為複雜，這裡簡化處理重整全部)
+        if(document.getElementById('playlistDetail').style.display === 'block') {
+           // 找到當前開啟的 playlist ID 重新渲染
+           // 這裡為了簡單，暫不即時刷新 Playlist 內的按鈕狀態，建議使用者重開
+        }
+    }
+
+
+    // --- 難度分類視圖邏輯 ---
+    let currentDiffFilter = 'master'; // 預設顯示 Master
+
+
+    function initDiffFilter() {
+        const bar = document.getElementById('diffFilterBar');
+        bar.innerHTML = '';
+        difficulties.forEach((diff, idx) => {
+            const chip = document.createElement('div');
+            chip.className = `filter-chip ${diff === 'master' ? 'active' : ''}`;
+            chip.innerText = diffLabels[idx];
+            chip.onclick = () => {
+                document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                currentDiffFilter = diff;
+                renderLevelGroup(diff);
+            };
+            bar.appendChild(chip);
+        });
+        renderLevelGroup('master');
+    }
+
+
+    function renderLevelGroup(diffKey) {
+        const container = document.getElementById('levelGroupContainer');
+        container.innerHTML = '';
+
+
+        // 1. 過濾出有該難度等級的歌
+        const relevantSongs = songs.filter(s => s.levels[diffKey] && s.levels[diffKey] !== "");
+        
+        // 2. 依照等級分組
+        const grouped = {};
+        relevantSongs.forEach(s => {
+            const lv = s.levels[diffKey];
+            if (!grouped[lv]) grouped[lv] = [];
+            grouped[lv].push(s);
+        });
+
+
+        // 3. 排序等級 (由大到小)
+        const levels = Object.keys(grouped).sort((a, b) => b - a);
+
+
+        if (levels.length === 0) {
+            container.innerHTML = '<div style="text-align:center; color:#666; margin-top:20px;">此難度沒有資料</div>';
+            return;
+        }
+
+
+        // 4. 渲染
+        levels.forEach(lv => {
+            const groupDiv = document.createElement('div');
+            groupDiv.className = 'level-group';
+            groupDiv.innerHTML = `<div class="level-header">Lv. ${lv}</div>`;
+
+
+            grouped[lv].forEach(song => {
+                // 迷你條
+                const s = song.status[diffKey];
+                const fcStyle = s.fc ? `background:${getComputedStyle(document.documentElement).getPropertyValue('--fc-color')}; color:#000;` : 'background:#444;';
+                const apStyle = s.ap ? `background:var(--ap-color); color:#000;` : 'background:#444;';
+                
+                const imgSrc = song.image || 'https://via.placeholder.com/40';
+
+
+                const row = document.createElement('div');
+                row.className = 'mini-row';
+                row.innerHTML = `
+                    <img src="${imgSrc}" class="mini-img">
+                    <div style="flex:1; font-size:0.95rem;">${song.title}</div>
+                    <div class="status-btns" style="transform:scale(0.9);">
+                         <button class="btn-toggle" style="${fcStyle}" onclick="toggleStatus(${song.id}, '${diffKey}', 'fc')">FC</button>
+                         <button class="btn-toggle" style="${apStyle}" onclick="toggleStatus(${song.id}, '${diffKey}', 'ap')">AP</button>
+                    </div>
+                `;
+                groupDiv.appendChild(row);
+            });
+            container.appendChild(groupDiv);
+        });
+    }
+
+
+
+
+    // --- 播放清單邏輯 ---
+    function renderPlaylists() {
+        const container = document.getElementById('playlistContainer');
+        container.innerHTML = '';
+        if(playlists.length === 0) {
+            container.innerHTML = '<div style="text-align:center;color:#666;">無播放清單</div>';
+            return;
+        }
+
+
+        playlists.forEach((pl, idx) => {
+            const div = document.createElement('div');
+            div.className = 'playlist-card';
+            div.innerHTML = `
+                <div class="playlist-name">${pl.name}</div>
+                <div class="playlist-count">${pl.songIds.length} 首歌曲</div>
+            `;
+            div.onclick = () => openPlaylistDetail(idx);
+            container.appendChild(div);
+        });
+    }
+
+
+    function openCreatePlaylistModal() {
+        document.getElementById('createPlaylistModal').style.display = 'flex';
+    }
+
+
+    function createPlaylist() {
+        const name = document.getElementById('newPlaylistName').value;
+        if(!name) return alert('請輸入名稱');
+        playlists.push({ name: name, songIds: [] });
+        saveData();
+        closeAllModals();
+        renderPlaylists();
+        document.getElementById('newPlaylistName').value = '';
+    }
+
+
+    // 顯示清單詳情
+    function openPlaylistDetail(index) {
+        const pl = playlists[index];
+        document.getElementById('playlistContainer').style.display = 'none';
+        document.getElementById('playlistDetail').style.display = 'block';
+        document.querySelector('.playlist-header').style.display = 'none'; // 隱藏標題
+        
+        document.getElementById('currentPlaylistTitle').innerText = pl.name;
+        
+        const container = document.getElementById('playlistSongsContainer');
+        container.innerHTML = '';
+
+
+        // 過濾出此清單的歌
+        const plSongs = songs.filter(s => pl.songIds.includes(s.id));
+        
+        if(plSongs.length === 0) {
+            container.innerHTML = '<p style="color:#666;">此清單是空的</p>';
+        } else {
+            plSongs.forEach(song => {
+                // 這裡為了方便，直接復用 createSongCard，但加入移除按鈕
+                const card = createSongCard(song);
+                // 修改右上角按鈕為 "移除"
+                const actions = card.querySelector('.card-actions');
+                actions.innerHTML = `<button class="icon-btn" style="color:red;" onclick="removeFromPlaylist(${index}, ${song.id})">🗑</button>`;
+                container.appendChild(card);
+            });
+        }
+    }
+
+
+    function backToPlaylists() {
+        document.getElementById('playlistContainer').style.display = 'block';
+        document.getElementById('playlistDetail').style.display = 'none';
+        document.querySelector('.playlist-header').style.display = 'flex';
+    }
+
+
+    function removeFromPlaylist(plIndex, songId) {
+        if(!confirm('從清單移除?')) return;
+        playlists[plIndex].songIds = playlists[plIndex].songIds.filter(id => id !== songId);
+        saveData();
+        openPlaylistDetail(plIndex); // 重整詳情
+        renderPlaylists(); // 更新外部計數
+    }
+
+
+    // --- 加入清單流程 ---
+    function openAddToPlaylistModal(songId) {
+        currentSelectedSongId = songId;
+        const list = document.getElementById('playlistSelectionList');
+        list.innerHTML = '';
+        if(playlists.length === 0) {
+            list.innerHTML = '<div>請先建立播放清單</div>';
+        } else {
+            playlists.forEach((pl, idx) => {
+                const checked = pl.songIds.includes(songId) ? 'checked' : '';
+                list.innerHTML += `
+                    <label class="playlist-option">
+                        <input type="checkbox" value="${idx}" ${checked}>
+                        ${pl.name}
+                    </label>
+                `;
+            });
+        }
+        document.getElementById('addToPlaylistModal').style.display = 'flex';
+    }
+
+
+    function confirmAddToPlaylist() {
+        if(currentSelectedSongId === null) return;
+        const checkboxes = document.querySelectorAll('#playlistSelectionList input[type="checkbox"]');
+        
+        checkboxes.forEach(cb => {
+            const plIdx = parseInt(cb.value);
+            const isChecked = cb.checked;
+            const pl = playlists[plIdx];
+            
+            if (isChecked && !pl.songIds.includes(currentSelectedSongId)) {
+                pl.songIds.push(currentSelectedSongId);
+            } else if (!isChecked && pl.songIds.includes(currentSelectedSongId)) {
+                pl.songIds = pl.songIds.filter(id => id !== currentSelectedSongId);
+            }
+        });
+        
+        saveData();
+        closeAllModals();
+        alert('清單更新完成');
+    }
+
+
+    // --- 新增歌曲與基礎功能 ---
+    function openAddSongModal() { document.getElementById('addSongModal').style.display = 'flex'; }
+    
+    function closeAllModals() {
+        document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+        currentSelectedSongId = null;
+    }
+
+
+    function addSong() {
+        const title = document.getElementById('inputTitle').value;
+        if(!title) return alert('請輸入歌名');
+
+
+        const getVal = (id) => document.getElementById(id).value;
+        const levels = {
+            easy: getVal('lvEasy'), normal: getVal('lvNormal'), hard: getVal('lvHard'),
+            expert: getVal('lvExpert'), master: getVal('lvMaster'), append: getVal('lvAppend')
+        };
+
+
+        const file = document.getElementById('inputImg').files[0];
+        const processSong = (imgBase64) => {
+            const newSong = {
+                id: Date.now(),
+                title,
+                image: imgBase64,
+                levels,
+                status: {
+                    easy: {fc:false, ap:false}, normal: {fc:false, ap:false}, hard: {fc:false, ap:false},
+                    expert: {fc:false, ap:false}, master: {fc:false, ap:false}, append: {fc:false, ap:false}
+                }
+            };
+            songs.unshift(newSong);
+            saveData();
+            closeAllModals();
+            renderAllSongs();
+            // 清空表單
+            document.getElementById('inputTitle').value = '';
+            document.querySelectorAll('input[type="number"]').forEach(i => i.value = '');
+        };
+
+
+        if(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => processSong(e.target.result);
+            reader.readAsDataURL(file);
+        } else {
+            processSong(null);
+        }
+    }
+
+
+    function deleteSong(id) {
+        if(!confirm('確定刪除?')) return;
+        songs = songs.filter(s => s.id !== id);
+        // 也要從所有清單中移除
+        playlists.forEach(pl => {
+            pl.songIds = pl.songIds.filter(sid => sid !== id);
+        });
+        saveData();
+        renderAllSongs();
+    }
+
+
+</script>
+</body>
+</html>

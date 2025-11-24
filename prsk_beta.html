@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PJSK 紀錄本 Pro (v4)</title>
+    <title>PJSK 紀錄本 Pro (v4.1 修復版)</title>
     <style>
         :root {
             --bg-color: #1a1a2e;
             --card-bg: #252542;
             --text-color: #fff;
-            --easy: #64DD17;    /* 互換為綠色 */
-            --normal: #448AFF;  /* 互換為藍色 */
+            --easy: #64DD17;    /* 綠色 (Easy/Normal 已互換) */
+            --normal: #448AFF;  /* 藍色 (Easy/Normal 已互換) */
             --hard: #FFD600;
             --expert: #D50000;
             --master: #AA00FF;
@@ -99,7 +99,7 @@
             cursor: pointer;
         }
 
-        /* --- 通用元件 (卡片/按鈕) --- */
+        /* --- 歌曲卡片基礎排版 --- */
         .song-card {
             background-color: var(--card-bg);
             border-radius: 12px;
@@ -109,15 +109,60 @@
             border: 1px solid #3a3a5e;
             position: relative;
         }
+        .song-header {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: rgba(0,0,0,0.2);
+        }
         .song-img {
             width: 60px; height: 60px; border-radius: 8px;
             object-fit: cover; background-color: #333;
             margin-right: 15px; border: 2px solid #fff;
         }
+        .song-info { flex: 1; min-width: 0; }
+        .song-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .card-actions {
+            display: flex;
+            gap: 5px;
+        }
+        .icon-btn {
+            background: none;
+            border: none;
+            color: #aaa;
+            font-size: 1.2rem;
+            padding: 5px;
+            cursor: pointer;
+        }
 
-        /* --- 難度與按鈕 --- */
-        .diff-row { /* ... 保持原樣 ... */ }
-        .diff-label { /* ... 保持原樣 ... */ }
+        /* --- 難度與狀態按鈕 --- */
+        .diff-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+            padding: 4px 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .diff-label {
+            width: 90px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: #fff;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* 難度顏色 */
         .bg-easy { background-color: var(--easy); }
         .bg-normal { background-color: var(--normal); }
         .bg-hard { background-color: var(--hard); color: #333 !important; text-shadow: none; }
@@ -125,6 +170,20 @@
         .bg-master { background-color: var(--master); }
         .bg-append { background-color: var(--append); color: #fff; }
 
+        .status-btns { display: flex; gap: 8px; }
+        .btn-toggle {
+            background: #333;
+            border: 1px solid #555;
+            color: #888;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            cursor: pointer;
+            min-width: 45px;
+        }
+
+        /* 狀態激活顏色 */
         .btn-toggle.fc-active {
             background-color: var(--fc-color);
             color: #003300;
@@ -138,7 +197,7 @@
             border-color: #FFD700;
         }
 
-        /* --- 難度分類 v2 樣式 --- */
+        /* --- 難度分類 V2 樣式 --- */
         .level-button-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
@@ -146,7 +205,7 @@
         }
         .level-button {
             padding: 12px 5px;
-            background: #333; /* 灰色底色 */
+            background: #333;
             border: 1px solid #555;
             color: #ccc;
             border-radius: 8px;
@@ -156,11 +215,6 @@
             text-align: center;
             transition: background 0.2s;
         }
-        .level-button:active {
-            background: #444;
-        }
-
-        /* Level 2 頁面 (彩色行) */
         .level-row-colored {
             display: flex;
             align-items: center;
@@ -171,11 +225,10 @@
             transition: background-color 0.3s;
             border: 2px solid rgba(255, 255, 255, 0.2);
         }
-        .level-row-colored .mini-img {
-            border: 2px solid white;
-        }
+        .mini-img { width: 40px; height: 40px; border-radius: 4px; margin-right: 10px; }
+        
+        /* 修正 Level 2 頁面按鈕顏色 */
         .level-row-colored .status-btns .btn-toggle {
-            /* 調整按鈕顏色，讓彩色背景下按鈕仍可見 */
             background: rgba(0,0,0,0.3) !important; 
             color: #fff;
             border-color: #fff;
@@ -183,11 +236,100 @@
         .level-row-colored .status-btns .btn-toggle.fc-active {
              background-color: var(--fc-color) !important;
              color: #000;
+             border-color: var(--fc-color) !important;
         }
         .level-row-colored .status-btns .btn-toggle.ap-active {
              background: var(--ap-color) !important;
              color: #000;
+             border-color: #FFD700 !important;
         }
+
+        /* --- 播放清單視圖 --- */
+        .playlist-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .playlist-card {
+            background: linear-gradient(135deg, #2a2a4a, #333);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            border-left: 5px solid #00d2ff;
+            cursor: pointer;
+        }
+        .playlist-name { font-size: 1.2rem; font-weight: bold; }
+        .playlist-count { color: #888; font-size: 0.9rem; margin-top: 5px; }
+        .playlist-option {
+            padding: 10px;
+            border-bottom: 1px solid #444;
+            display: flex;
+            align-items: center;
+        }
+        .playlist-option input { width: auto; margin-right: 10px; margin-bottom: 0; }
+
+
+        /* --- FAB & Modals --- */
+        .fab {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background-color: #00d2ff;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            color: white;
+            box-shadow: 0 4px 15px rgba(0,210,255,0.4);
+            cursor: pointer;
+            border: none;
+            z-index: 200;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 300;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .modal-content {
+            background: #252542;
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+            border-radius: 15px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        /* 表單元件 */
+        input[type="text"], input[type="number"], select {
+            width: 100%;
+            padding: 10px;
+            background: #1a1a2e;
+            border: 1px solid #444;
+            color: white;
+            border-radius: 6px;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+        .btn-full { width: 100%; padding: 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn-primary { background-color: #00d2ff; color: white; }
+        .btn-secondary { background: transparent; border: 1px solid #555; color: #aaa; }
+        
+        .level-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #ccc; font-size: 0.9rem; }
 
     </style>
 </head>
@@ -301,7 +443,6 @@
     window.onload = () => {
         renderAllSongs();
         renderPlaylists();
-        // 首次載入時，不必渲染 level buttons，交給 switchTab
     };
 
     // --- Tab 切換邏輯 ---
@@ -334,7 +475,6 @@
         const container = document.getElementById('songListContainer');
         container.innerHTML = '';
         
-        // 搜尋邏輯
         const query = document.getElementById('searchInput').value.toLowerCase();
         const filteredSongs = songs.filter(song => 
             song.title.toLowerCase().includes(query)
@@ -350,7 +490,7 @@
         });
     }
     
-    // ... createSongCard (保持不變) ...
+    // 建立單一歌曲卡片的 DOM
     function createSongCard(song) {
         const card = document.createElement('div');
         card.className = 'song-card';
@@ -396,17 +536,14 @@
         return card;
     }
 
+    // --- 難度分類 V2 邏輯 (保持不變) ---
 
-    // --- 難度分類 v2 邏輯 ---
-
-    // Level 1 View: 渲染所有存在的等級按鈕
     function renderLevelButtons() {
         const container = document.getElementById('level1View');
         container.style.display = 'grid';
         container.innerHTML = '';
         document.getElementById('level2View').style.display = 'none';
 
-        // 1. 收集所有唯一的等級數字
         const uniqueLevels = new Set();
         songs.forEach(song => {
             difficulties.forEach(diff => {
@@ -417,14 +554,13 @@
             });
         });
 
-        const sortedLevels = Array.from(uniqueLevels).sort((a, b) => b - a); // 由大到小排序
+        const sortedLevels = Array.from(uniqueLevels).sort((a, b) => b - a);
 
         if (sortedLevels.length === 0) {
             container.innerHTML = '<p style="text-align: center; grid-column: 1 / -1; color: #666; margin-top:20px;">目前沒有歌曲紀錄等級。</p>';
             return;
         }
 
-        // 2. 渲染按鈕
         sortedLevels.forEach(level => {
             const button = document.createElement('div');
             button.className = 'level-button';
@@ -434,7 +570,6 @@
         });
     }
 
-    // Level 2 View: 渲染該等級的所有歌曲（彩色背景）
     function renderLevel2View(levelNum) {
         document.getElementById('level1View').style.display = 'none';
         document.getElementById('level2View').style.display = 'block';
@@ -445,7 +580,6 @@
         
         let levelEntries = [];
 
-        // 1. 收集所有符合此 Level 的難度條目
         songs.forEach(song => {
             difficulties.forEach(diffKey => {
                 if (parseInt(song.levels[diffKey]) === levelNum) {
@@ -459,18 +593,15 @@
             });
         });
 
-        // 2. 依照預設顏色順序排序 (粉 -> 紫 -> 紅 -> 黃 -> 藍 -> 綠)
         levelEntries.sort((a, b) => {
             return diffSortOrder.indexOf(a.diffKey) - diffSortOrder.indexOf(b.diffKey);
         });
 
-        // 3. 渲染
         levelEntries.forEach(entry => {
             const { song, diffKey, diffLabel, diffLevel } = entry;
             
-            // 獲取該難度的顏色變數值
-            const diffColorVar = getComputedStyle(document.documentElement).getPropertyValue(`--${diffKey}`).trim();
-            // 處理黃色(Hard)背景下的文字顏色
+            const rootStyle = getComputedStyle(document.documentElement);
+            const diffColorVar = rootStyle.getPropertyValue(`--${diffKey}`).trim();
             const textColor = (diffKey === 'hard') ? '#333' : '#fff'; 
             
             const s = song.status[diffKey];
@@ -502,9 +633,8 @@
         renderLevelButtons();
     }
 
-    // --- 其他功能 (toggleStatus, exportData, importData, Playlists, Modals) 保持不變 ---
+    // --- 狀態切換與資料處理 (保持不變) ---
 
-    // 狀態切換 (FC/AP)
     function toggleStatus(songId, diff, type) {
         const song = songs.find(s => s.id === songId);
         if (!song) return;
@@ -518,23 +648,20 @@
             else { status.ap = true; status.fc = true; }
         }
         saveData();
-        // 重新渲染當前視圖 (針對 Level 2 view 的即時更新)
+        
         if(document.getElementById('view-songs').classList.contains('active-view')) renderAllSongs();
         if(document.getElementById('level2View').style.display !== 'none') {
-             // 找到當前 Level Title 中的數字並重新渲染
              const match = document.getElementById('currentLevelTitle').innerText.match(/Lv\. (\d+)/);
              if(match) renderLevel2View(parseInt(match[1]));
         }
     }
 
-    // 匯出/匯入邏輯 (保持不變)
-    
     function exportData() {
         const data = {
             songs: songs,
             playlists: playlists,
             timestamp: new Date().toISOString(),
-            version: "PJSK_Tracker_v4"
+            version: "PJSK_Tracker_v4.1"
         };
         const jsonString = JSON.stringify(data);
         const blob = new Blob([jsonString], { type: 'application/json' });
@@ -590,8 +717,6 @@
         };
         reader.readAsText(file);
     }
-    
-    // Playlists & Modal functions (保持不變)
     
     function renderPlaylists() {
         const container = document.getElementById('playlistContainer');

@@ -586,4 +586,212 @@
             grouped[lv].forEach(song => {
                 // 迷你條
                 const s = song.status[diffKey];
-                const fcStyle = s.fc ? `background:${getComputedStyle(do
+                const fcStyle = s.fc ? `background:${getComputedStyle(document.documentElement).getPropertyValue('--fc-color')}; color:#000;` : 'background:#444;';
+                const apStyle = s.ap ? `background:var(--ap-color); color:#000;` : 'background:#444;';
+                
+                const imgSrc = song.image || 'https://via.placeholder.com/40';
+
+                const row = document.createElement('div');
+                row.className = 'mini-row';
+                row.innerHTML = `
+                    <img src="${imgSrc}" class="mini-img">
+                    <div style="flex:1; font-size:0.95rem;">${song.title}</div>
+                    <div class="status-btns" style="transform:scale(0.9);">
+                         <button class="btn-toggle" style="${fcStyle}" onclick="toggleStatus(${song.id}, '${diffKey}', 'fc')">FC</button>
+                         <button class="btn-toggle" style="${apStyle}" onclick="toggleStatus(${song.id}, '${diffKey}', 'ap')">AP</button>
+                    </div>
+                `;
+                groupDiv.appendChild(row);
+            });
+            container.appendChild(groupDiv);
+        });
+    }
+
+
+    // --- 播放清單邏輯 ---
+    function renderPlaylists() {
+        const container = document.getElementById('playlistContainer');
+        container.innerHTML = '';
+        if(playlists.length === 0) {
+            container.innerHTML = '<div style="text-align:center;color:#666;">無播放清單</div>';
+            return;
+        }
+
+        playlists.forEach((pl, idx) => {
+            const div = document.createElement('div');
+            div.className = 'playlist-card';
+            div.innerHTML = `
+                <div class="playlist-name">${pl.name}</div>
+                <div class="playlist-count">${pl.songIds.length} 首歌曲</div>
+            `;
+            div.onclick = () => openPlaylistDetail(idx);
+            container.appendChild(div);
+        });
+    }
+
+    function openCreatePlaylistModal() {
+        document.getElementById('createPlaylistModal').style.display = 'flex';
+    }
+
+    function createPlaylist() {
+        const name = document.getElementById('newPlaylistName').value;
+        if(!name) return alert('請輸入名稱');
+        playlists.push({ name: name, songIds: [] });
+        saveData();
+        closeAllModals();
+        renderPlaylists();
+        document.getElementById('newPlaylistName').value = '';
+    }
+
+    // 顯示清單詳情
+    function openPlaylistDetail(index) {
+        const pl = playlists[index];
+        document.getElementById('playlistContainer').style.display = 'none';
+        document.getElementById('playlistDetail').style.display = 'block';
+        document.querySelector('.playlist-header').style.display = 'none'; // 隱藏標題
+        
+        document.getElementById('currentPlaylistTitle').innerText = pl.name;
+        
+        const container = document.getElementById('playlistSongsContainer');
+        container.innerHTML = '';
+
+        // 過濾出此清單的歌
+        const plSongs = songs.filter(s => pl.songIds.includes(s.id));
+        
+        if(plSongs.length === 0) {
+            container.innerHTML = '<p style="color:#666;">此清單是空的</p>';
+        } else {
+            plSongs.forEach(song => {
+                // 這裡為了方便，直接復用 createSongCard，但加入移除按鈕
+                const card = createSongCard(song);
+                // 修改右上角按鈕為 "移除"
+                const actions = card.querySelector('.card-actions');
+                actions.innerHTML = `<button class="icon-btn" style="color:red;" onclick="removeFromPlaylist(${index}, ${song.id})">🗑</button>`;
+                container.appendChild(card);
+            });
+        }
+    }
+
+    function backToPlaylists() {
+        document.getElementById('playlistContainer').style.display = 'block';
+        document.getElementById('playlistDetail').style.display = 'none';
+        document.querySelector('.playlist-header').style.display = 'flex';
+    }
+
+    function removeFromPlaylist(plIndex, songId) {
+        if(!confirm('從清單移除?')) return;
+        playlists[plIndex].songIds = playlists[plIndex].songIds.filter(id => id !== songId);
+        saveData();
+        openPlaylistDetail(plIndex); // 重整詳情
+        renderPlaylists(); // 更新外部計數
+    }
+
+    // --- 加入清單流程 ---
+    function openAddToPlaylistModal(songId) {
+        currentSelectedSongId = songId;
+        const list = document.getElementById('playlistSelectionList');
+        list.innerHTML = '';
+        if(playlists.length === 0) {
+            list.innerHTML = '<div>請先建立播放清單</div>';
+        } else {
+            playlists.forEach((pl, idx) => {
+                const checked = pl.songIds.includes(songId) ? 'checked' : '';
+                list.innerHTML += `
+                    <label class="playlist-option">
+                        <input type="checkbox" value="${idx}" ${checked}>
+                        ${pl.name}
+                    </label>
+                `;
+            });
+        }
+        document.getElementById('addToPlaylistModal').style.display = 'flex';
+    }
+
+    function confirmAddToPlaylist() {
+        if(currentSelectedSongId === null) return;
+        const checkboxes = document.querySelectorAll('#playlistSelectionList input[type="checkbox"]');
+        
+        checkboxes.forEach(cb => {
+            const plIdx = parseInt(cb.value);
+            const isChecked = cb.checked;
+            const pl = playlists[plIdx];
+            
+            if (isChecked && !pl.songIds.includes(currentSelectedSongId)) {
+                pl.songIds.push(currentSelectedSongId);
+            } else if (!isChecked && pl.songIds.includes(currentSelectedSongId)) {
+                pl.songIds = pl.songIds.filter(id => id !== currentSelectedSongId);
+            }
+        });
+        
+        saveData();
+        closeAllModals();
+        alert('清單更新完成');
+    }
+
+    // --- 新增歌曲與基礎功能 ---
+    function openAddSongModal() { document.getElementById('addSongModal').style.display = 'flex'; }
+    
+    function closeAllModals() {
+        document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+        currentSelectedSongId = null;
+    }
+
+    function addSong() {
+        const title = document.getElementById('inputTitle').value;
+        if(!title) return alert('請輸入歌名');
+
+        const getVal = (id) => document.getElementById(id).value;
+        const levels = {
+            easy: getVal('lvEasy'), normal: getVal('lvNormal'), hard: getVal('lvHard'),
+            expert: getVal('lvExpert'), master: getVal('lvMaster'), append: getVal('lvAppend')
+        };
+
+        const file = document.getElementById('inputImg').files[0];
+        const processSong = (imgBase64) => {
+            const newSong = {
+                id: Date.now(),
+                title,
+                image: imgBase64,
+                levels,
+                status: {
+                    easy: {fc:false, ap:false}, normal: {fc:false, ap:false}, hard: {fc:false, ap:false},
+                    expert: {fc:false, ap:false}, master: {fc:false, ap:false}, append: {fc:false, ap:false}
+                }
+            };
+            songs.unshift(newSong);
+            saveData();
+            closeAllModals();
+            renderAllSongs();
+            
+            // --- 圖片上傳問題的修復程式碼 ---
+            // 1. 清空所有文字/數字輸入欄位
+            document.getElementById('inputTitle').value = '';
+            document.querySelectorAll('#addSongModal input[type="number"]').forEach(i => i.value = '');
+            // 2. 關鍵修復：清空檔案輸入欄位的值，讓它可以重新接收新圖片
+            document.getElementById('inputImg').value = ''; 
+            // -------------------------------
+        };
+
+        if(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => processSong(e.target.result);
+            reader.readAsDataURL(file);
+        } else {
+            processSong(null);
+        }
+    }
+
+    function deleteSong(id) {
+        if(!confirm('確定刪除?')) return;
+        songs = songs.filter(s => s.id !== id);
+        // 也要從所有清單中移除
+        playlists.forEach(pl => {
+            pl.songIds = pl.songIds.filter(sid => sid !== id);
+        });
+        saveData();
+        renderAllSongs();
+    }
+
+</script>
+</body>
+</html>

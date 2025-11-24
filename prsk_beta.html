@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PJSK 紀錄本 Pro</title>
+    <title>PJSK 紀錄本 Pro (v3)</title>
     <style>
         :root {
             --bg-color: #1a1a2e;
@@ -14,8 +14,8 @@
             --hard: #FFD600;
             --expert: #D50000;
             --master: #AA00FF;
-            --append: #FF4081; /* 改為粉色 */
-            --fc-color: #00E676; /* 改為綠色 */
+            --append: #FF4081; /* 粉色 */
+            --fc-color: #00E676; /* 綠色 */
             --ap-color: linear-gradient(45deg, #FFD700, #FFF, #FFD700);
             --tab-active: #00d2ff;
         }
@@ -80,6 +80,23 @@
 
         .content-area.active-view {
             display: block;
+        }
+
+        /* --- 匯出入同步欄 --- */
+        .data-sync-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .btn-sync {
+            flex: 1;
+            padding: 10px;
+            background: #4a4a6e;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
         }
 
         /* --- 通用元件 --- */
@@ -340,6 +357,12 @@
     </div>
 
     <div id="view-songs" class="content-area active-view">
+        <div class="data-sync-bar">
+            <button class="btn-sync" onclick="exportData()">⬇️ 匯出資料</button>
+            <button class="btn-sync" onclick="triggerImport()">⬆️ 匯入資料</button>
+        </div>
+        <input type="file" id="importFile" accept=".json" onchange="handleImport(event)" style="display:none;">
+
         <div id="songListContainer"></div>
     </div>
 
@@ -450,7 +473,79 @@
         localStorage.setItem('pjsk_songs_v2', JSON.stringify(songs));
         localStorage.setItem('pjsk_playlists_v2', JSON.stringify(playlists));
     }
+    
+    // --- 匯出/匯入邏輯 ---
+    
+    function exportData() {
+        // 1. 組合所有資料
+        const data = {
+            songs: songs,
+            playlists: playlists,
+            timestamp: new Date().toISOString(),
+            version: "PJSK_Tracker_v3"
+        };
+        const jsonString = JSON.stringify(data);
 
+        // 2. 建立 Blob 和下載連結
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        // 檔案名稱格式: pjsk_record_backup_2025-11-24.json
+        a.download = `pjsk_record_backup_${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        alert('資料已成功匯出為 JSON 檔案！');
+    }
+
+    function triggerImport() {
+        document.getElementById('importFile').click();
+    }
+
+    function handleImport(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const importedData = JSON.parse(e.target.result);
+                
+                // 驗證檔案格式
+                if (!importedData.songs || !importedData.playlists) {
+                    throw new Error("檔案格式不符，缺少 songs 或 playlists 欄位。");
+                }
+                
+                if (!confirm('確認匯入？這將覆蓋您裝置上現有所有歌曲和清單紀錄！')) {
+                    event.target.value = ''; // 取消後清除 input 狀態
+                    return;
+                }
+
+                // 覆蓋現有資料
+                songs = importedData.songs;
+                playlists = importedData.playlists;
+                saveData(); // 儲存到 localStorage
+
+                // 更新 UI
+                renderAllSongs();
+                initDiffFilter();
+                renderPlaylists();
+                alert('資料匯入成功！已更新所有紀錄和清單。');
+
+            } catch (error) {
+                console.error(error);
+                alert(`匯入失敗: ${error.message}. 請檢查檔案是否為有效的備份 JSON 檔。`);
+            }
+            
+            // 無論成功或失敗，都要清除 input 狀態
+            event.target.value = ''; 
+        };
+        reader.readAsText(file);
+    }
+    
     // --- 渲染：所有歌曲卡片 ---
     function renderAllSongs() {
         const container = document.getElementById('songListContainer');
@@ -527,10 +622,6 @@
         // 重新渲染當前視圖
         if(document.getElementById('view-songs').classList.contains('active-view')) renderAllSongs();
         if(document.getElementById('view-levels').classList.contains('active-view')) renderLevelGroup(currentDiffFilter);
-        // 如果在播放清單內，也要重整 (略為複雜，這裡簡化處理重整全部)
-        if(document.getElementById('playlistDetail').style.display === 'block') {
-           // 這裡為了簡單，暫不即時刷新 Playlist 內的按鈕狀態，建議使用者重開
-        }
     }
 
     // --- 難度分類視圖邏輯 ---
@@ -763,13 +854,10 @@
             closeAllModals();
             renderAllSongs();
             
-            // --- 圖片上傳問題的修復程式碼 ---
-            // 1. 清空所有文字/數字輸入欄位
+            // 清空表單
             document.getElementById('inputTitle').value = '';
             document.querySelectorAll('#addSongModal input[type="number"]').forEach(i => i.value = '');
-            // 2. 關鍵修復：清空檔案輸入欄位的值，讓它可以重新接收新圖片
             document.getElementById('inputImg').value = ''; 
-            // -------------------------------
         };
 
         if(file) {
